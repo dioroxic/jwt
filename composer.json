@@ -1,0 +1,26 @@
+{
+    "name": "ares-eng/jwt",
+    "autoload": {
+        "psr-4": {
+            "AresEng\\Jwt\\": "src"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ares-eng"
+        }
+    ],
+    "require-dev": {
+        "orchestra/testbench": "^6.27"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "AresEng\\Jwt\\JwtServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "ext-json": "*"
+    }
+}
