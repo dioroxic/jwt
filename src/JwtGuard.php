@@ -1,12 +1,12 @@
 <?php
 
-namespace AresEng\Jwt;
+namespace Dioroxic\Jwt;
 
-use AresEng\Jwt\Exceptions\JwtTokenException;
+use BadMethodCallException;
 use Illuminate\Auth\GuardHelpers;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Contracts\Auth\UserProvider;
-use Illuminate\Foundation\Auth\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Traits\Macroable;
 
@@ -26,53 +26,42 @@ class JwtGuard implements Guard
         $this->request  = $request;
     }
 
-    public function user()
+    public function user(): ?Authenticatable
     {
         if ($this->user) {
             return $this->user;
         }
 
-        $token = $this->getToken();
-        if ($token && $payload = $this->jwt->verify($token)) {
+        if ($payload = $this->jwt->verify()) {
             return $this->user = $this->provider->retrieveById($payload->uid);
         }
+        return null;
     }
 
-    public function getToken()
-    {
-        $authorizationHeader = $this->request->header('Authorization');
-        if ($authorizationHeader) {
-            $tokenArr = explode(' ', $authorizationHeader);
-            if (count($tokenArr) >= 2 && isset($tokenArr[1])) {
-                [, $token] = $tokenArr;
-                return $token;
-            }
-        }
-    }
-
-    public function validate(array $credentials = [])
+    public function validate(array $credentials = []): bool
     {
         return (bool)$this->attempt($credentials, false);
     }
 
-    public function attempt(array $credentials = [], $login = true)
+    /**
+     * 尝试使用给定的凭据对用户进行身份验证，验证通过返回token
+     * @param array $credentials
+     * @param bool $login
+     * @return bool|string
+     * @throws \JsonException
+     */
+    public function attempt(array $credentials = [], bool $login = true)
     {
         $user = $this->provider->retrieveByCredentials($credentials);
-        if ($this->hasValidCredentials($user, $credentials)) {
-            return $login ? $this->login($user) : true;
+        if ($user) {
+            if ($login) {
+                $this->setUser($user);
+                return $this->jwt->generate($user);
+            }
+            return true;
         }
 
         return false;
-    }
-
-    public function login(User $user)
-    {
-        return $this->jwt->generate($user);
-    }
-
-    protected function hasValidCredentials($user, $credentials)
-    {
-        return $user !== null && $this->provider->validateCredentials($user, $credentials);
     }
 
     public function __call($method, $parameters)
@@ -85,6 +74,6 @@ class JwtGuard implements Guard
             return $this->macroCall($method, $parameters);
         }
 
-        throw new \BadMethodCallException("Method [$method] does not exist.");
+        throw new BadMethodCallException("Method [$method] does not exist.");
     }
 }

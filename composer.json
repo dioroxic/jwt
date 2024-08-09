@@ -1,22 +1,29 @@
 {
-    "name": "ares-eng/jwt",
+    "name": "dioroxic/jwt",
     "autoload": {
         "psr-4": {
-            "AresEng\\Jwt\\": "src"
+            "Dioroxic\\Jwt\\": "./src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dioroxic\\Jwt\\Tests\\": "./tests"
         }
     },
     "authors": [
         {
-            "name": "Ares-eng"
+            "name": "dioroxic"
         }
     ],
     "require-dev": {
-        "orchestra/testbench": "^6.27"
+        "orchestra/testbench": "^6.27",
+        "phpunit/phpunit": "^9.6",
+        "mockery/mockery": "^1.6"
     },
     "extra": {
         "laravel": {
             "providers": [
-                "AresEng\\Jwt\\JwtServiceProvider"
+                "Dioroxic\\Jwt\\JwtServiceProvider"
             ]
         }
     },

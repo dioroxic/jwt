@@ -1,21 +1,26 @@
 <?php
 
-namespace AresEng\Jwt;
+namespace Dioroxic\Jwt;
 
-use AresEng\Jwt\Exceptions\JwtExpireException;
-use AresEng\Jwt\Exceptions\JwtSecretException;
-use AresEng\Jwt\Exceptions\JwtTokenException;
+use Dioroxic\Jwt\Exceptions\JwtException;
+use Dioroxic\Jwt\Exceptions\TokenInvalidException;
 use Illuminate\Foundation\Auth\User;
+use Illuminate\Http\Request;
 
 class Jwt
 {
     private $secret;
+    private $expire;
 
-    public function __construct()
+    protected Request $request;
+
+    public function __construct(Request $request)
     {
-        $this->secret = env('JWT_SECRET');
+        $this->request = $request;
+        $this->secret  = config('jwt.secret');
+        $this->expire  = config('jwt.expire');
         if (!$this->secret) {
-            throw new JwtSecretException('jwt secret cannot be null');
+            throw new JwtException('Jwt secret cannot be null');
         }
     }
 
@@ -25,36 +30,44 @@ class Jwt
         $jwtHeader = base64_encode(json_encode([
             "typ" => "JWT",
             "alg" => "HS256"
-        ]));
+        ], JSON_THROW_ON_ERROR));
 
         $jwtPayload = base64_encode(json_encode([
-            "exp" => now()->timestamp + 3600,
+            "exp" => now()->timestamp + $this->expire,
             "uid" => $user->getKey()
-        ]));
+        ], JSON_THROW_ON_ERROR));
 
         $base64String = $jwtHeader . $jwtPayload;
         $jwtSecret    = hash_hmac('sha256', $base64String, $this->secret);
         return "{$jwtHeader}.{$jwtPayload}.{$jwtSecret}";
     }
 
-    // 验证token
-    public function verify($token)
+    /**
+     * 验证token
+     * @return mixed|void
+     * @throws TokenInvalidException
+     * @throws \JsonException
+     */
+    public function verify()
     {
+        $token    = $this->request->bearerToken();
         $tokenArr = explode('.', $token);
-        if (count($tokenArr) < 3) {
-            throw new JwtTokenException("Unauthorized");
+        if (empty($token)) {
+            throw new TokenInvalidException("Empty token");
         }
-        [$header, $payload,] = explode('.', $token);
+        if (count($tokenArr) !== 3) {
+            throw new TokenInvalidException("Invalid token");
+        }
+        [$header, $payload,] = $tokenArr;
         $signature   = hash_hmac("sha256", $header . $payload, $this->secret);
         $verifyToken = "{$header}.{$payload}.{$signature}";
-        if ($verifyToken != $token) {
-            throw new JwtSecretException("jwt verification error");
+        if ($verifyToken !== $token) {
+            throw new TokenInvalidException("Token verification error");
         }
 
-        $payload = json_decode(base64_decode($payload));
-        if (now()->timestamp >= $payload->exp) {
-            throw new JwtExpireException("jwt expiration");
+        $payload = json_decode(base64_decode($payload), false, 512, JSON_THROW_ON_ERROR);
+        if (now()->timestamp <= $payload->exp) {
+            return $payload;
         }
-        return $payload;
     }
 }

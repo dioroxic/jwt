@@ -1,26 +1,25 @@
 <?php
 
-namespace AresEng\Jwt\Middleware;
+namespace Dioroxic\Jwt\Middleware;
 
-use AresEng\Jwt\Exceptions\JwtTokenException;
+use Dioroxic\Jwt\Exceptions\JwtException;
 use Closure;
+use Dioroxic\Jwt\Exceptions\UnauthorizedHttpException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ApiAuth
 {
     public function handle(Request $request, Closure $next)
     {
-        $authorizationHeader = $request->header('Authorization');
-        if (!$authorizationHeader) {
-            throw new JwtTokenException('Unauthorized', 401);
-        }
-        $tokenArr = explode(' ', $authorizationHeader);
-        if (count($tokenArr) < 2 || !isset($tokenArr[1])) {
-            throw new JwtTokenException('Unauthorized', 401);
+        try {
+            if (!Auth::check()) {
+                throw new UnauthorizedHttpException('Unauthorized', 401);
+            }
+        } catch (JwtException $exception) {
+            throw new UnauthorizedHttpException('Unauthorized', 401);
         }
 
-        [, $token] = $tokenArr;
-        $request->token = $token;
         return $next($request);
     }
 }
